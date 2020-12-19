@@ -2,7 +2,6 @@ import React, { Component } from 'react'
 import { PanResponder, Text, View, Dimensions, Animated } from 'react-native'
 import PropTypes from 'prop-types'
 import isEqual from 'lodash/isEqual'
-import ViewOverflow from 'react-native-view-overflow'
 
 import styles from './styles'
 
@@ -52,6 +51,7 @@ class Swiper extends Component {
       swipeBackXYPositions: [],
       isSwipingBack: false,
       ...rebuildStackAnimatedValues(props)
+
     }
 
     this._mounted = true
@@ -138,8 +138,8 @@ class Swiper extends Component {
   createAnimatedEvent = () => {
     const { horizontalSwipe, verticalSwipe } = this.props
     const { x, y } = this.state.pan
-    const dx = horizontalSwipe ? x : 0
-    const dy = verticalSwipe ? y : 0
+    const dx = horizontalSwipe ? x : new Animated.Value(0)
+    const dy = verticalSwipe ? y : new Animated.Value(0)
     return { dx, dy }
   }
 
@@ -195,7 +195,7 @@ class Swiper extends Component {
       })
     }
 
-    return Animated.event([null, this.createAnimatedEvent()])(
+    return Animated.event([null, this.createAnimatedEvent()], { useNativeDriver: false })(
       event,
       gestureState
     )
@@ -344,7 +344,8 @@ class Swiper extends Component {
     Animated.spring(this.state.pan, {
       toValue: 0,
       friction: this.props.topCardResetAnimationFriction,
-      tension: this.props.topCardResetAnimationTension
+      tension: this.props.topCardResetAnimationTension,
+      useNativeDriver: true
     }).start(cb)
 
     this.state.pan.setOffset({
@@ -409,6 +410,8 @@ class Swiper extends Component {
     y = this._animatedValueY,
     mustDecrementCardIndex = false
   ) => {
+
+    console.log(x, y);
     this.setState({ panResponderLocked: true })
     this.animateStack()
     Animated.timing(this.state.pan, {
@@ -416,7 +419,8 @@ class Swiper extends Component {
         x: x * SWIPE_MULTIPLY_FACTOR,
         y: y * SWIPE_MULTIPLY_FACTOR
       },
-      duration: this.props.swipeAnimationDuration
+      duration: this.props.swipeAnimationDuration,
+      useNativeDriver: true
     }).start(() => {
       this.setSwipeBackCardXY(x, y, () => {
         mustDecrementCardIndex = mustDecrementCardIndex
@@ -504,7 +508,7 @@ class Swiper extends Component {
 
     this.onSwipedCallbacks(onSwiped)
 
-    allSwipedCheck = () => newCardIndex === this.state.cards.length
+    const allSwipedCheck = () => newCardIndex === this.state.cards.length
 
     if (allSwipedCheck()) {
       if (!infinite) {
@@ -692,10 +696,9 @@ class Swiper extends Component {
     })
 
   render = () => {
-    const { pointerEvents, backgroundColor, marginTop, marginBottom, containerStyle, swipeBackCard, useViewOverflow } = this.props
-    const ViewComponent = useViewOverflow ? ViewOverflow : View
+    const { pointerEvents, backgroundColor, marginTop, marginBottom, containerStyle, swipeBackCard } = this.props
     return (
-      <ViewComponent
+      <View
         pointerEvents={pointerEvents}
         style={[
           styles.container,
@@ -710,7 +713,7 @@ class Swiper extends Component {
         {this.renderChildren()}
         {swipeBackCard ? this.renderSwipeBackCard() : null}
         {this.renderStack()}
-      </ViewComponent>
+      </View>
     )
   }
 
@@ -912,7 +915,6 @@ Swiper.propTypes = {
   swipeBackCard: PropTypes.bool,
   topCardResetAnimationFriction: PropTypes.number,
   topCardResetAnimationTension: PropTypes.number,
-  useViewOverflow: PropTypes.bool,
   verticalSwipe: PropTypes.bool,
   verticalThreshold: PropTypes.number,
   zoomAnimationDuration: PropTypes.number,
@@ -967,7 +969,7 @@ Swiper.defaultProps = {
   onSwipedLeft: cardIndex => { },
   onSwipedRight: cardIndex => { },
   onSwipedTop: cardIndex => { },
-  onSwiping: () => { },
+  onSwiping: (x, y) => {x, y},
   onTapCard: (cardIndex) => { },
   onTapCardDeadZone: 5,
   outputCardOpacityRangeX: [0.8, 1, 1, 1, 0.8],
@@ -1007,7 +1009,6 @@ Swiper.defaultProps = {
   swipeBackCard: false,
   topCardResetAnimationFriction: 7,
   topCardResetAnimationTension: 40,
-  useViewOverflow: true,
   verticalSwipe: true,
   verticalThreshold: height / 5,
   zoomAnimationDuration: 100,
